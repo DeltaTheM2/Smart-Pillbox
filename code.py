@@ -7,6 +7,7 @@ import socketpool
 import displayio
 import digitalio
 import board
+import json
 import os
 import terminalio
 from adafruit_display_text import bitmap_label
@@ -27,15 +28,17 @@ except Exception as e:  # pylint: disable=broad-except
 pool = socketpool.SocketPool(wifi.radio)
 requests = adafruit_requests.Session(pool, ssl.create_default_context())
 
+
 #Get the Time
+
 DATA_SOURCE = "http://worldtimeapi.org/api/timezone/America/Los_Angeles"
 device_name = "Warren's ESP"
 
 # URL to fetch from
 JSON_STARS_URL = "https://api.github.com/repos/adafruit/circuitpython"
-FIREBASE_URL = "https://pillbox-3e02f-default-rtdb.firebaseio.com/"
+FIREBASE_URL = "https://console.firebase.google.com/u/0/project/pillbox-3e02f/firestore/data/~2Fpills"
 
-firebase_path = FIREBASE_URL + "data.json"
+server_url = "https://smart-pillbox-server.onrender.com"
 
 # Set up background image and text
 display = board.DISPLAY
@@ -63,11 +66,8 @@ display.show(main_group)
 current_background_image = "/images/HOMESCREEN.bmp"
 #local Screens
 HOMESCREEN = "/images/HOMESCREEN.bmp"
-PILLCOUNTER = "/images/PILLCOUNTER.bmp"
+PILLCOUNTER = "/images/PILLSCREEN.bmp"
 SETTINGS = "/images/SETTINGS.bmp"
-#PILLCOUNTER1 = "/images/     .bmp"
-
-
 
 def set_background_image(filename):
     global current_background_image
@@ -76,6 +76,16 @@ def set_background_image(filename):
     group[0] = new_tile_grid
     current_background_image = filename
 
+def send_data(firebasedata):
+    response = requests.post(f"{server_url}/update_firestore", json=firebasedata)
+    print("Response from server:", response.text)
+
+
+
+def get_data():
+    response = requests.get(f"{server_url}/get_firestore")
+    data = json.dumps(response)
+    print("Data from server:", str(data))
 
 btnD0 = digitalio.DigitalInOut(board.BUTTON)
 btnD0.direction = digitalio.Direction.INPUT
@@ -129,8 +139,8 @@ def parse_reminder():
         minute = 0
         hour += 1
     elif minute < 0:
-        minute = 60 - minute
         hour -= 1
+        minute = 60 - minute
 
     time_str = "{:02d}:{:02d}".format(hour, minute)
     main_group.pop()
@@ -144,57 +154,16 @@ def parse_reminder():
 counter = 0
 previous_time = None
 
-my_dict = {'Pill1' : counter, 'Pill2' : counter, 'Pill3' : counter}
+
+my_dict = {'Pill 1' : counter, 'Pill 2' : counter, 'Pill 3' : counter}
 
 firebasedata = {
-        'Device Name': device_name,
-        #'Pills' : pills,
-        'Last pill taken' : 0
+        'med_count': 0,
+        'med_history': "2023-1-1T07:22Z",
+        'med_name': "",
+        'reminder' : 0
         }
 pill_index = 0
 selected_pill = list(my_dict.keys())[pill_index]
-while True:
-    response = requests.get(DATA_SOURCE)
-    data = response.json()
-    current_hour, current_minute, current_period = parse_time(data["datetime"])
-    if current_background_image == HOMESCREEN:
-        time_label.text = " {:2}:{:02}{}".format(current_hour, current_minute, current_period)
-    else:
-        time_label.text = ""
-
-    if not btnD0.value:
-        if current_background_image != HOMESCREEN:
-            main_group.pop()
-            set_background_image(HOMESCREEN)
-            requests.post(firebase_path, json = firebasedata)
-            time_label.text = " {:2}:{:02}{}".format(current_hour, current_minute, current_period)
-            main_group.append(time_label)
-
-
-    if btnD1.value:
-        if current_background_image == HOMESCREEN:
-            set_background_image(SETTINGS)
-            requests.post(firebase_path, json = firebasedata)
-            parse_reminder()
-        elif current_background_image == PILLCOUNTER:
-            pill_index = (pill_index + 1) % len(my_dict)
-            selected_pill = list(my_dict.keys())[pill_index]
-            requests.post(firebase_path, json = firebasedata)
-            display_counter(selected_pill, my_dict[selected_pill])
-        elif current_background_image == SETTINGS:
-            REMINDER_TIME += 1800
-            requests.post(firebase_path, json = firebasedata)
-            parse_reminder()
-
-
-    if btnD2.value:
-        if current_background_image == HOMESCREEN:
-            set_background_image(PILLCOUNTER)
-        elif current_background_image == PILLCOUNTER:
-            my_dict[selected_pill] += 1
-            requests.post(firebase_path, json = firebasedata)
-            display_counter(selected_pill, my_dict[selected_pill])
-        elif current_background_image == SETTINGS:
-            REMINDER_TIME -= 1800
-            requests.post(firebase_path, json = firebasedata)
-            parse_reminder()
+send_data(firebasedata)
+get_data()
