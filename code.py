@@ -78,7 +78,7 @@ def set_background_image(filename):
     current_background_image = filename
 
 def send_data(firebasedata):
-    response = requests.post(f"{server_url}/update_firestore", data=firebasedata)
+    response = requests.post(f"{server_url}/update_firestore",headers={'Content-type': 'application/json', 'Accept': 'application/json'}, data=firebasedata)
     print("Response from server:", response.text)
 
 
@@ -167,9 +167,10 @@ firebasedata = {
         'med_name': "something",
         'reminder' : 12
         }
+firebasedata['med_history'] = [int(dt.timestamp()) for dt in firebasedata['med_history']]
 pill_index = 0
 selected_pill = list(my_dict.keys())[pill_index]
-send_data(my_dict)
+send_data(json.dumps(firebasedata))
 get_data()
 
 while True:
@@ -211,5 +212,3 @@ while True:
         elif current_background_image == SETTINGS:
             REMINDER_TIME -= 1800
             parse_reminder()
-
-
