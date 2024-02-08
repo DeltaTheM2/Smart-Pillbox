@@ -87,6 +87,7 @@ def get_data():
     response = requests.get(f"{server_url}/get_firestore")
     data = json.dumps(response)
     print("Data from server:", response.json())
+    return response.json()
 
 btnD0 = digitalio.DigitalInOut(board.BUTTON)
 btnD0.direction = digitalio.Direction.INPUT
@@ -195,7 +196,7 @@ while True:
             set_background_image(SETTINGS)
             parse_reminder()
         elif current_background_image == PILLCOUNTER:
-            pill_index = (pill_index + 1) % len(my_dict)
+            pill_index = (pill_index + 1) % len(firebasedata)
             selected_pill = list(my_dict.keys())[pill_index]
             display_counter(selected_pill, my_dict[selected_pill])
         elif current_background_image == SETTINGS:
@@ -206,6 +207,7 @@ while True:
     if btnD2.value:
         if current_background_image == HOMESCREEN:
             set_background_image(PILLCOUNTER)
+            firebasedata = json.loads(getData())
         elif current_background_image == PILLCOUNTER:
             my_dict[selected_pill] += 1
             display_counter(selected_pill, my_dict[selected_pill])
