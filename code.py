@@ -173,13 +173,27 @@ pill_index = 0
 selected_pill = list(my_dict.keys())[pill_index]
 send_data(json.dumps(firebasedata))
 get_data()
-
+timeOutCounter = 0
+timeOutStart = time.time()
+i2c_power = digitalio.DigitalInOut(board.TFT_I2C_POWER)
+time.sleep(0.1)
+i2c_power.switch_to_output()
+time.sleep(0.1)
+i2c_power.value = False
+time.sleep(1)
+i2c_power.value = True
 while True:
     response = requests.get(DATA_SOURCE)
     data = response.json()
     current_hour, current_minute, current_period = parse_time(data["datetime"])
     if current_background_image == HOMESCREEN:
         time_label.text = " {:2}:{:02}{}".format(current_hour, current_minute, current_period)
+        if timeOutCounter >= 60:
+            i2c_power.value = False
+        if time.time() - timeOutStart > 1:
+            print(timeOutCounter)
+            timeOutCounter += 1
+            timeOutStart = time.time()
     else:
         time_label.text = ""
 
@@ -189,6 +203,9 @@ while True:
             set_background_image(HOMESCREEN)
             time_label.text = " {:2}:{:02}{}".format(current_hour, current_minute, current_period)
             main_group.append(time_label)
+            timeOutStart = time.time()
+            i2c_power.value = True
+            timeOutCounter = 0
 
 
     if btnD1.value:
@@ -199,18 +216,29 @@ while True:
             pill_index = (pill_index + 1) % len(firebasedata)
             selected_pill = list(my_dict.keys())[pill_index]
             display_counter(selected_pill, my_dict[selected_pill])
+            timeOutStart = time.time()
+            i2c_power.value = True
+            timeOutCounter = 0
         elif current_background_image == SETTINGS:
             REMINDER_TIME += 1800
             parse_reminder()
+            timeOutStart = time.time()
+            i2c_power.value = True
+            timeOutCounter = 0
 
 
     if btnD2.value:
         if current_background_image == HOMESCREEN:
             set_background_image(PILLCOUNTER)
-            firebasedata = json.loads(getData())
         elif current_background_image == PILLCOUNTER:
             my_dict[selected_pill] += 1
             display_counter(selected_pill, my_dict[selected_pill])
+            timeOutStart = time.time()
+            i2c_power.value = True
+            timeOutCounter = 0
         elif current_background_image == SETTINGS:
             REMINDER_TIME -= 1800
             parse_reminder()
+            timeOutStart = time.time()
+            i2c_power.value = True
+            timeOutCounter = 0
