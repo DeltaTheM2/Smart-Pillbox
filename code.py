@@ -16,18 +16,6 @@ from adafruit_bitmap_font import bitmap_font
 import adafruit_requests
 import adafruit_ili9341
 
-# Get WiFi details secrets.py file
-try:
-    wifi.radio.connect(
-        os.getenv("CIRCUITPY_WIFI_SSID"), os.getenv("CIRCUITPY_WIFI_PASSWORD")
-    )
-    print("Connected to %s!" % os.getenv("CIRCUITPY_WIFI_SSID"))
-except Exception as e:  # pylint: disable=broad-except
-    print(
-        "Failed to connect to WiFi. Error:", e, "\nBoard will hard reset in 30 seconds."
-    )
-pool = socketpool.SocketPool(wifi.radio)
-requests = adafruit_requests.Session(pool, ssl.create_default_context())
 
 
 #Get the Time
@@ -173,15 +161,16 @@ pill_index = 0
 selected_pill = list(my_dict.keys())[pill_index]
 send_data(json.dumps(firebasedata))
 get_data()
-timeOutCounter = 0
-timeOutStart = time.time()
-i2c_power = digitalio.DigitalInOut(board.TFT_I2C_POWER)
-time.sleep(0.1)
-i2c_power.switch_to_output()
-time.sleep(0.1)
-i2c_power.value = False
-time.sleep(1)
-i2c_power.value = True
+# timeOutCounter = 0
+# timeOutStart = time.time()
+# i2c_power = digitalio.DigitalInOut(board.TFT_I2C_POWER)
+# time.sleep(0.1)
+# i2c_power.switch_to_output()
+# time.sleep(0.1)
+# i2c_power.value = False
+# time.sleep(1)
+# i2c_power.value = True
+
 while True:
     response = requests.get(DATA_SOURCE)
     data = response.json()
