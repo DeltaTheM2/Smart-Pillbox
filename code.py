@@ -65,6 +65,10 @@ def get_or_create_device_id(filename="device_id.txt"):
         print("New Device ID:", device_id)
         #get_qrcode(device_id)
         return device_id
+    def check_registered(filename="qrcode.bmp"):
+        if filename in os.listdir("/"):
+            with open(filename, 'r') as file:
+                print("opened")
  
 # Set up background image and text
 display = board.DISPLAY
