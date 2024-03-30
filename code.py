@@ -209,6 +209,16 @@ firebasedata['med_history'] = [int(dt.timestamp()) for dt in firebasedata['med_h
 pill_index = 0
 
 
+
+isRegistered = False
+
+def check_variable_exists(collection, document, variable):
+    data1 = get_data()
+    if "uid" in data1:
+        isRegistered = True
+
+
+
 selected_pill = list(my_dict.keys())[pill_index]
 #send_data(json.dumps(firebasedata))
 #get_data()
@@ -225,6 +235,9 @@ time.sleep(1)
 i2c_power.value = True
 show_QR()
 while True:
+    time.sleep(15)
+    check_variable_exists("users", "Mvb9da9QG4cwVOmVgVfopztylO63", "uid")
+    print(isRegistered)
     response = requests.get(DATA_SOURCE)
     data = response.json()
     current_hour, current_minute, current_period = parse_time(data["datetime"])
