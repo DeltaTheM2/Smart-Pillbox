@@ -110,8 +110,8 @@ def send_data(firebasedata):
 
 
 
-def get_data():
-    response = requests.get(f"{server_url}/get_firestore")
+def get_data(route="get_firestore"):
+    response = requests.get(f"{server_url}/{route}")
     data = json.dumps(response)
     print("Data from server:", response.json())
     return response.json()
@@ -212,17 +212,18 @@ pill_index = 0
 
 isRegistered = False
 
-def check_variable_exists(collection, document, variable):
-    data1 = get_data()
-    if "uid" in data1:
+def isDeviceRegistered(device_id):
+    response = requests.get(f"{server_url}/isRegistered")
+    if response is not None:
         isRegistered = True
+    
 
 
 
 selected_pill = list(my_dict.keys())[pill_index]
 #send_data(json.dumps(firebasedata))
 #get_data()
-#device_id = get_or_create_device_id()
+device_id = get_or_create_device_id()
 #get_qrcode(device_id)
 timeOutCounter = 0
 timeOutStart = time.time()
@@ -236,7 +237,7 @@ i2c_power.value = True
 show_QR()
 while True:
     time.sleep(15)
-    check_variable_exists("users", "Mvb9da9QG4cwVOmVgVfopztylO63", "uid")
+    isDeviceRegistered(device_id)
     print(isRegistered)
     response = requests.get(DATA_SOURCE)
     data = response.json()
