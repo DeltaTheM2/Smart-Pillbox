@@ -229,16 +229,22 @@ timeOutCounter = 0
 timeOutStart = time.time()
 i2c_power = digitalio.DigitalInOut(board.TFT_I2C_POWER)
 time.sleep(0.1)
+#turning off the screen after the device has been inactive
 i2c_power.switch_to_output()
 time.sleep(0.1)
 i2c_power.value = False
 time.sleep(1)
 i2c_power.value = True
 show_QR()
-while True:
+while not isRegistered:
     time.sleep(15)
     isDeviceRegistered(device_id)
     print(isRegistered)
+
+if isRegistered:
+    main_group.pop()
+while True:
+    
     response = requests.get(DATA_SOURCE)
     data = response.json()
     current_hour, current_minute, current_period = parse_time(data["datetime"])
