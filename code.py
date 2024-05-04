@@ -87,7 +87,7 @@ main_group = displayio.Group()
 main_group.append(group)
 main_group.append(time_label)
 
-display.show(main_group)
+display.root_group = main_group
 
 current_background_image = "/images/HOMESCREEN.bmp"
 #local Screens
@@ -184,12 +184,12 @@ def show_QR():
     whitebg_bitmap = displayio.OnDiskBitmap("/images/whitebg.bmp")
     tile_grid = displayio.TileGrid(whitebg_bitmap, pixel_shader=whitebg_bitmap.pixel_shader)
     main_group.append(tile_grid)
-    qrcode_bitmap = displayio.OnDiskBitmap("/images/qrcode.bmp")
+    qrcode_bitmap = displayio.OnDiskBitmap("/qrcode.bmp")
     tile_grid1 = displayio.TileGrid(qrcode_bitmap, pixel_shader=qrcode_bitmap.pixel_shader)
     main_group.append(tile_grid1)
     tile_grid1.x = 52
     tile_grid1.y = -2
-    display.show(main_group)
+    display.root_group = main_group
 counter = 0
 previous_time = None
 
@@ -215,7 +215,7 @@ isRegistered = False
 def isDeviceRegistered(device_id):
     response = requests.get(f"{server_url}/isRegistered")
     if response is not None:
-        return True
+        isRegistered = True
 
 
 
@@ -229,18 +229,20 @@ timeOutCounter = 0
 timeOutStart = time.time()
 i2c_power = digitalio.DigitalInOut(board.TFT_I2C_POWER)
 time.sleep(0.1)
+#turning off the screen after the device has been inactive
 i2c_power.switch_to_output()
 time.sleep(0.1)
 i2c_power.value = False
 time.sleep(1)
 i2c_power.value = True
-isRegistered = isDeviceRegistered(device_id)
-if not isRegistered:
-    show_QR()
+show_QR()
 while not isRegistered:
-    isRegistered = isDeviceRegistered(device_id)
-    print(isRegistered)
     time.sleep(15)
+    isDeviceRegistered(device_id)
+    print(isRegistered)
+
+if isRegistered:
+    main_group.pop()
 while True:
 
     response = requests.get(DATA_SOURCE)
