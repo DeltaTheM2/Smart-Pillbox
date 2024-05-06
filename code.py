@@ -136,6 +136,7 @@ btnD2.pull = digitalio.Pull.DOWN
 #btn.switch_to_input(pull = digitalio.Pull.UP)
 
 def display_counter(pill_name, count):
+    reset_inactivity_timer()
     main_group.pop()
     font = bitmap_font.load_font("/fonts/Arial-Bold-36.bdf")
 
@@ -181,6 +182,7 @@ def parse_reminder():
     display.root_group = main_group
 
 def show_QR():
+    reset_inactivity_timer()
     whitebg_bitmap = displayio.OnDiskBitmap("/images/whitebg.bmp")
     tile_grid = displayio.TileGrid(whitebg_bitmap, pixel_shader=whitebg_bitmap.pixel_shader)
     main_group.append(tile_grid)
@@ -192,29 +194,21 @@ def show_QR():
     display.root_group = main_group
 counter = 0
 previous_time = None
+my_dict = {}
 
-def check_for_notifications():
-    response = requests.get(f"{server_url}/fetch_notification/{device_id}")
+def update_pill_data():
+    response = requests.get(f"{server_url}/get_pills_for_device/{get_or_create_device_id()}")
     if response.status_code == 200:
-        notification_data = response.json()
-        if 'notification_text' in notification_data:
-            display_notification(notification_data['notification_text'])
-
-def display_notification(text):
-    # Clear the current screen or display elements
-    main_group.pop()
-    # Setup the notification text
-    font = bitmap_font.load_font("/fonts/Arial-Bold-36.bdf")
-    text_area = bitmap_label.Label(font, text=text, color=0x000000)
-    text_area.x = 80
-    text_area.y = 50
-    main_group.append(text_area)
-    # Show the notification
-    display.root_group = main_group
-    print("Notification displayed:", text)
+        pills_data = response.json()
+        new_pill_dict = {pill['med_name']: pill['med_count'] for pill in pills_data}
+        print("Updated pill counts:", new_pill_dict)
+        return new_pill_dict
+    else:
+        print("Failed to fetch pill data:", response.status_code)
+        return {}
 
 
-my_dict = {'Pill 1' : counter, 'Pill 2' : counter, 'Pill 3' : counter}
+my_dict = {'Pill 1': 0, 'Pill 2': 0, 'Pill 3': 0}
 
 firebasedata = {
         'med_count': 20,
@@ -230,7 +224,7 @@ pill_index = 0
 
 
 
-isRegistered = False
+isRegistered = True
 
 def isDeviceRegistered(device_id):
     response = requests.get(f"{server_url}/isRegistered")
@@ -255,16 +249,78 @@ time.sleep(0.1)
 i2c_power.value = False
 time.sleep(1)
 i2c_power.value = True
-show_QR()
-while not isRegistered:
+#show_QR()
+
+def check_for_notifications():
+    try:
+        response = requests.get(f"{server_url}/fetch_notification/{device_id}")
+        if response.status_code == 200:
+            notification_data = response.json()
+            if 'notification_text' in notification_data:
+                display_notification(notification_data['notification_text'])
+    except Exception as e:
+        print("Error when checking for notifications:", e)
+
+# Function to display the notification
+def display_notification(text):
+    reset_inactivity_timer()
+    # Clear existing display elements
+    while len(main_group):
+        main_group.pop()
+    # Setup the notification text
+    font = bitmap_font.load_font("/fonts/Arial-Bold-36.bdf")
+    text_area = bitmap_label.Label(font, text=text, color=0x000000)
+    text_area.x = 80
+    text_area.y = 50
+    main_group.append(text_area)
+    # Show the notification
+    display.show(main_group)
+    print("Notification displayed:", text)
+    
+def reset_inactivity_timer():
+    global timeOutStart
+    timeOutStart = time.monotonic()
+    i2c_power.value = True  # Ensure screen is on when there's an interaction
+
+# Check the timeout in your main loop
+def check_inactivity_timeout():
+    global timeOutStart
+    if (time.monotonic() - timeOutStart) > 60:  # 60 seconds for 1 minute
+        i2c_power.value = False    
+    
+    
+def manage_wifi_connection(should_connect):
+    if should_connect and not wifi.radio.enabled:
+        try:
+            wifi.radio.enabled = True
+            wifi.radio.connect(os.getenv("CIRCUITPY_WIFI_SSID"), os.getenv("CIRCUITPY_WIFI_PASSWORD"))
+            print("Connected to WiFi!")
+        except Exception as e:
+            print("Failed to connect to WiFi. Error:", e)
+    elif not should_connect:
+        wifi.radio.enabled = False
+        print("WiFi disabled.")
+
+# Main loop control variable
+last_checked = time.monotonic()
+
+while isRegistered == False:
     time.sleep(15)
     isDeviceRegistered(device_id)
     print(isRegistered)
 
-if isRegistered:
-    main_group.pop()
+#if isRegistered:
+ #   main_group.pop()
 while True:
-
+    check_inactivity_timeout()
+    current_time = time.monotonic()
+    
+    # Check if 15 minutes have passed
+    if (current_time - last_checked) > 900:  # 900 seconds = 15 minutes
+        check_for_notifications()
+        last_checked = current_time
+        manage_wifi_connection(False)
+        
     response = requests.get(DATA_SOURCE)
     data = response.json()
     current_hour, current_minute, current_period = parse_time(data["datetime"])
@@ -295,7 +351,7 @@ while True:
             set_background_image(SETTINGS)
             parse_reminder()
         elif current_background_image == PILLCOUNTER:
-            pill_index = (pill_index + 1) % len(firebasedata)
+            pill_index = (pill_index + 1) % len(my_dict)
             selected_pill = list(my_dict.keys())[pill_index]
             display_counter(selected_pill, my_dict[selected_pill])
             timeOutStart = time.time()
@@ -324,3 +380,4 @@ while True:
             timeOutStart = time.time()
             i2c_power.value = True
             timeOutCounter = 0
+    time.sleep(0.1)
