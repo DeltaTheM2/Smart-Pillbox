@@ -178,7 +178,7 @@ def parse_reminder():
     text_area.x = 80
     text_area.y = 67
     main_group.append(text_area)
-    display.show(main_group)
+    display.root_group = main_group
 
 def show_QR():
     whitebg_bitmap = displayio.OnDiskBitmap("/images/whitebg.bmp")
@@ -192,6 +192,26 @@ def show_QR():
     display.root_group = main_group
 counter = 0
 previous_time = None
+
+def check_for_notifications():
+    response = requests.get(f"{server_url}/fetch_notification/{device_id}")
+    if response.status_code == 200:
+        notification_data = response.json()
+        if 'notification_text' in notification_data:
+            display_notification(notification_data['notification_text'])
+
+def display_notification(text):
+    # Clear the current screen or display elements
+    main_group.pop()
+    # Setup the notification text
+    font = bitmap_font.load_font("/fonts/Arial-Bold-36.bdf")
+    text_area = bitmap_label.Label(font, text=text, color=0x000000)
+    text_area.x = 80
+    text_area.y = 50
+    main_group.append(text_area)
+    # Show the notification
+    display.root_group = main_group
+    print("Notification displayed:", text)
 
 
 my_dict = {'Pill 1' : counter, 'Pill 2' : counter, 'Pill 3' : counter}
